@@ -4,8 +4,8 @@
           <NavigationBar>
             <CalendarView />
           </NavigationBar>
-          <FooterComponent/>
       </v-main>
+      <FooterComponent/>
     </v-app>
 </template>
 

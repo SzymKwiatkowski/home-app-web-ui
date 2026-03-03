@@ -1,5 +1,5 @@
 <template>
-    <v-footer class="d-flex align-center justify-center ga-2 flex-grow-1 py-3" color="surface-light">
+    <v-footer app height="60" class="d-flex align-center justify-center" color="surface-light" rounded="lg">
     <v-btn
       v-for="link in links"
       :key="link"

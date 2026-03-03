@@ -1,72 +1,51 @@
 <template>
   <div class="container mx-auto p-4">
-    <!-- <v-toolbar color="primary">
-      <v-btn
-        class="ma-2"
-        variant="text"
-        icon
-        @click="$refs.calendar.prev()"
+    <div class="mb-4 flex justify-between items-center">
+      <h1 class="text-2xl font-bold">Calendar</h1>
+      <button 
+        @click="() => { selectedDate = new Date(); eventFormDialog = true }"
+        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
       >
-        <v-icon>mdi-chevron-left</v-icon>
-      </v-btn>
-      
-      <v-select v-model="selectedCalendarType" :items="calendarTypes" class="ma-2 my-2" density="compact" label="View Mode"
-        variant="outlined" hide-details></v-select>
-      <v-select v-model="weekday" :items="weekdays" class="ma-2 my-2" density="compact" label="Weekdays" variant="outlined"
-        hide-details></v-select>
-
-      <v-spacer></v-spacer>
-      <v-btn
-        class="ma-2"
-        variant="text"
-        icon
-        @click="$refs.calendar.next()"
-      >
-        <v-icon>mdi-chevron-right</v-icon>
-      </v-btn>
-    </v-toolbar> -->
+        + New Event
+      </button>
+    </div>
     <v-sheet height="600">
-      <!-- <v-calendar 
-        :ref="calendar" 
-        v-model="value" 
-        :model-value="today"
-        :event-color="getEventColor"
-        :view-mode="selectedCalendarType"
-        color="primary" 
-        :events="events"
-        @click:date="openEventForm"
-        @click:event="showEvent" 
-        :event-overlap-mode="mode"
-        :event-overlap-threshold="30"
-        class="calendar" 
-        :time="false"
-        :weekdays="weekday">
-      </v-calendar> -->
       <vue-cal
+        ref="vuecalRef"
+        :selectedDate="selectedDate"
         dark
-        time 
+        time
         :events="events"
         :view="selectedCalendarType"
         :views="calendarTypes"
         editable-events
-        @event-create="openEventForm" />
+        @event-create="openEventForm"
+        @event-click="handleEventClick"
+        @event-update="handleEventUpdate"
+      />
     </v-sheet>
 
-    <!-- Event Create Modal -->
-    <div v-if="eventFormDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-700 bg-opacity-50">
-      <div class="bg-gray-700 rounded-lg shadow-lg p-6 w-full max-w-md">
-        <EventForm :date="selectedDate" @save="addEvent" @close="eventFormDialog = false" />
-        <button @click="eventFormDialog = false"
-          class="mt-4 px-4 py-2 bg-gray-800 rounded hover:bg-gray-300">Close</button>
+    <!-- Event Create/Edit Modal -->
+    <div v-if="eventFormDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-screen overflow-y-auto">
+        <EventForm 
+          :date="selectedDate" 
+          :event="selectedEvent" 
+          @save="handleEventSave" 
+          @close="closeEventForm"
+          @delete="handleEventDelete"
+        />
       </div>
     </div>
 
     <!-- Event Detail Modal -->
-    <div v-if="eventDetailDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div class="bg-gray-700 rounded-lg shadow-lg p-6 w-full max-w-md">
-        <EventDetail :event="selectedEvent" @close="eventDetailDialog = false" />
-        <button @click="eventDetailDialog = false"
-          class="mt-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Close</button>
+    <div v-else-if="eventDetailDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+        <EventDetail 
+          :event="selectedEvent" 
+          @close="eventDetailDialog = false"
+          @edit="editEvent"
+        />
       </div>
     </div>
   </div>
@@ -76,7 +55,6 @@
 import { ref, onMounted } from 'vue'
 import EventForm from '@/components/EventForm.vue'
 import EventDetail from '@/components/EventDetail.vue'
-import { useDate } from 'vuetify'
 import { VueCal } from 'vue-cal'
 import 'vue-cal/style'
 
@@ -100,58 +78,91 @@ const weekdays = [
   { title: 'Mon - Fri', value: [1, 2, 3, 4, 5] },
   { title: 'Mon, Wed, Fri', value: [1, 3, 5] }];
 
-// Fix: Accept and use the date from cell click
+// Open event form for creating a new event
 function openEventForm(cell) {
-  // cell.date should be defined
-  selectedDate.value = cell?.date || cell
+  selectedEvent.value = null
+  if (cell?.date) {
+    selectedDate.value = cell.date
+  } else {
+    selectedDate.value = new Date()
+  }
   eventFormDialog.value = true
 }
 
-function addEvent(event) {
-  events.value.push(event)
-  eventFormDialog.value = false
-}
-
-function showEvent(event) {
+// Handle event click to view details
+function handleEventClick(event) {
   selectedEvent.value = event
   eventDetailDialog.value = true
 }
 
-onMounted(() => {
-  const adapter = useDate()
-  fetchEvents({ 
-    start: adapter.startOfDay(adapter.startOfMonth(new Date())),
-    end: adapter.endOfDay(adapter.endOfMonth(new Date())) })
-})
+// Edit event from detail view
+function editEvent(event) {
+  console.log('Editing event:', event)
+  selectedEvent.value = event
+  eventDetailDialog.value = false
+  eventFormDialog.value = true
+}
 
-function fetchEvents({ start, end }) {
-  const _events = []
-  const min = start
-  const max = end
-  const days = (max.getTime() - min.getTime()) / 86400000
-  const eventCount = rnd(days, days + 20)
-  for (let i = 0; i < eventCount; i++) {
-    const allDay = rnd(0, 3) === 0
-    const firstTimestamp = rnd(min.getTime(), max.getTime())
-    const first = new Date(firstTimestamp - (firstTimestamp % 900000))
-    const secondTimestamp = rnd(2, allDay ? 288 : 8) * 900000
-    const second = new Date(first.getTime() + secondTimestamp)
-    _events.push({
-      title: names[rnd(0, names.length - 1)],
-      start: first,
-      end: second,
-      color: colors[rnd(0, colors.length - 1)],
-      allDay: !allDay,
-    })
+// Close event form and reset
+function closeEventForm() {
+  eventFormDialog.value = false
+  selectedEvent.value = null
+  selectedDate.value = null
+}
+
+// Handle saving event (create or update)
+function handleEventSave(eventData) {
+  if (!eventData.id) {
+    return
   }
-  events.value = _events
-}
-function rnd(a, b) {
-  return Math.floor((b - a + 1) * Math.random()) + a
+  
+  const existingIndex = events.value.findIndex(e => e.id === eventData.id)
+  
+  if (existingIndex >= 0) {
+    // Update existing event
+    events.value[existingIndex] = {
+      ...eventData,
+      allDay: false
+    }
+    console.log('Event updated:', eventData)
+  } else {
+    // Create new event
+    events.value.push({
+      ...eventData,
+      allDay: false
+    })
+    console.log('Event created:', eventData)
+  }
+  
+  closeEventForm()
 }
 
-
-function getEventColor (event) {
-  return event.color
+// Handle event deletion
+function handleEventDelete(eventId) {
+  const index = events.value.findIndex(e => e.id === eventId)
+  console.log('Deleting event with ID:', eventId, 'Found at index:', index)
+  if (index >= 0) {
+    const deletedEvent = events.value[index]
+    events.value.splice(index, 1)
+    console.log('Event deleted:', deletedEvent)
+  }
+  closeEventForm()
 }
+
+// Handle event dragging/updating from calendar
+function handleEventUpdate(event) {
+  const index = events.value.findIndex(e => e.id === event.id)
+  if (index >= 0) {
+    events.value[index] = {
+      ...events.value[index],
+      start: event.start,
+      end: event.end
+    }
+    console.log('Event updated from calendar:', event)
+  }
+}
+
+onMounted(() => {
+  // Initialize with empty events array - user can add events manually
+})
 </script>

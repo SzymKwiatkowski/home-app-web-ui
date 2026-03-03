@@ -6,7 +6,7 @@
       :text="link"
       variant="text"
       rounded
-      disabled="true"
+      :disabled="true"
     ></v-btn>
   </v-footer>
 </template>

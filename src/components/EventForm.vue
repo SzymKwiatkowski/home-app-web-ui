@@ -24,8 +24,8 @@
       <v-text-field v-model="payment" label="Payment (optional)" type="number" />
     </v-card-text>
     <v-card-actions>
-      <v-btn color="primary" @click="save">Save</v-btn>
-      <v-btn text @click="$emit('close')">Cancel</v-btn>
+      <v-btn color="primary" elevation="8" @click="save">Save</v-btn>
+      <v-btn @click="$emit('close')">Cancel</v-btn>
     </v-card-actions>
   </v-card>
 </template>

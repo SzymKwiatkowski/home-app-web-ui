@@ -1,15 +1,55 @@
 <template>
   <div class="container mx-auto p-4">
-    <v-toolbar color="primary">
-        <v-select v-model="selectedCalendarType" :items="calendarTypes" class="ma-2 my-2" density="compact" label="View Mode"
-          variant="outlined" hide-details></v-select>
-        <v-select v-model="weekday" :items="weekdays" class="ma-2 my-2" density="compact" label="Weekdays" variant="outlined"
-          hide-details></v-select>
-    </v-toolbar>
-    <v-sheet>
-      <v-calendar ref="calendar" :view-mode="selectedCalendarType" color="primary" :events="events"
-        @click:date="openEventForm" @click:event="showEvent"
-        class="calendar" :time="false" :weekdays="weekday"></v-calendar>
+    <!-- <v-toolbar color="primary">
+      <v-btn
+        class="ma-2"
+        variant="text"
+        icon
+        @click="$refs.calendar.prev()"
+      >
+        <v-icon>mdi-chevron-left</v-icon>
+      </v-btn>
+      
+      <v-select v-model="selectedCalendarType" :items="calendarTypes" class="ma-2 my-2" density="compact" label="View Mode"
+        variant="outlined" hide-details></v-select>
+      <v-select v-model="weekday" :items="weekdays" class="ma-2 my-2" density="compact" label="Weekdays" variant="outlined"
+        hide-details></v-select>
+
+      <v-spacer></v-spacer>
+      <v-btn
+        class="ma-2"
+        variant="text"
+        icon
+        @click="$refs.calendar.next()"
+      >
+        <v-icon>mdi-chevron-right</v-icon>
+      </v-btn>
+    </v-toolbar> -->
+    <v-sheet height="600">
+      <!-- <v-calendar 
+        :ref="calendar" 
+        v-model="value" 
+        :model-value="today"
+        :event-color="getEventColor"
+        :view-mode="selectedCalendarType"
+        color="primary" 
+        :events="events"
+        @click:date="openEventForm"
+        @click:event="showEvent" 
+        :event-overlap-mode="mode"
+        :event-overlap-threshold="30"
+        class="calendar" 
+        :time="false"
+        :weekdays="weekday">
+      </v-calendar> -->
+      <vue-cal
+        dark
+        time 
+        :events="events"
+        :view="selectedCalendarType"
+        :views="calendarTypes"
+        editable-events
+        @event-create="openEventForm" />
     </v-sheet>
 
     <!-- Event Create Modal -->
@@ -37,10 +77,14 @@ import { ref, onMounted } from 'vue'
 import EventForm from '@/components/EventForm.vue'
 import EventDetail from '@/components/EventDetail.vue'
 import { useDate } from 'vuetify'
+import { VueCal } from 'vue-cal'
+import 'vue-cal/style'
 
 const calendar = ref()
+const value = ref('')
 const today = ref(new Date())
 const events = ref([])
+const mode = ref('stack')
 const colors = ['blue', 'indigo', 'deep-purple', 'cyan', 'green', 'orange', 'grey darken-1']
 const names = ['Meeting', 'Holiday', 'PTO', 'Travel', 'Event', 'Birthday', 'Conference', 'Party']
 const eventFormDialog = ref(false)
@@ -48,7 +92,7 @@ const eventDetailDialog = ref(false)
 const selectedDate = ref(null)
 const selectedEvent = ref(null)
 const selectedCalendarType = ref("month")
-const calendarTypes = ['month', 'week']
+const calendarTypes = ['month', 'week', 'day']
 const weekday = ref([1, 2, 3, 4, 5, 6, 0]);
 const weekdays = [
   { title: 'Sun - Sat', value: [0, 1, 2, 3, 4, 5, 6] },
@@ -104,5 +148,10 @@ function fetchEvents({ start, end }) {
 }
 function rnd(a, b) {
   return Math.floor((b - a + 1) * Math.random()) + a
+}
+
+
+function getEventColor (event) {
+  return event.color
 }
 </script>

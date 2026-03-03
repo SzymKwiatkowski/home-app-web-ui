@@ -1,17 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+/* 
 .vuecal__cell {
   height: 4em !important;
   border: 2px solid #e5e7eb !important;
   box-sizing: border-box;
   background: #fff;
-}
+} */
 /* Highlight for today */
 
-.vuecal__cell--special.today-highlight {
   /* Tailwind utility classes applied via @apply */
+/* .vuecal__cell--special.today-highlight {
   @apply bg-blue-600 text-white rounded-full font-bold flex items-center justify-center;
   box-shadow: 0 0 0 4px #2563eb, 0 0 8px #2563eb80 !important;
   width: 3em !important;
@@ -19,10 +19,10 @@
   margin: auto !important;
   z-index: 3;
   position: relative;
-}
+} */
 
 /* Selected day highlight */
-.vuecal__cell.vuecal__cell--selected {
+/* .vuecal__cell.vuecal__cell--selected {
   @apply bg-amber-600 text-white rounded-full font-bold flex items-center justify-center;
   box-shadow: 0 0 0 4px #d97706, 0 0 8px #d9770680 !important;
   width: 3em !important;
@@ -30,4 +30,4 @@
   margin: auto !important;
   z-index: 4;
   position: relative;
-}
+} */

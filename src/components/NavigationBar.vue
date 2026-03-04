@@ -1,6 +1,4 @@
 <template>
-  <v-card class="flex-1-1-100">
-    <v-layout>
       <v-app-bar :elevation="12" rounded color="primary">
         <template v-slot:prepend>
           <v-app-bar-nav-icon variant="text" @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
@@ -28,15 +26,9 @@
           </v-list-item>
         </v-list>
       </v-navigation-drawer>
-      <v-main>
-        <slot />
-      </v-main>
-    </v-layout>
-  </v-card>
 </template>
 
 <script setup>
-import ThemeComponent from './ThemeComponent.vue';
 import { ref, watch } from 'vue'
 
 const items = [

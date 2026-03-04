@@ -91,13 +91,12 @@ function openEventForm(cell) {
 
 // Handle event click to view details
 function handleEventClick(event) {
-  selectedEvent.value = event
+  selectedEvent.value = event.event
   eventDetailDialog.value = true
 }
 
 // Edit event from detail view
 function editEvent(event) {
-  console.log('Editing event:', event)
   selectedEvent.value = event
   eventDetailDialog.value = false
   eventFormDialog.value = true
@@ -164,5 +163,6 @@ function handleEventUpdate(event) {
 
 onMounted(() => {
   // Initialize with empty events array - user can add events manually
+
 })
 </script>

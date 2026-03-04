@@ -148,7 +148,7 @@ const emit = defineEmits(['save', 'close', 'delete'])
 
 const isEditing = computed(() => {
   console.log('Checking if editing:', props.event)
-  return !!props.event?.event?.id})
+  return !!props.event?.id})
 
 const formData = ref({
   title: '',
@@ -296,8 +296,8 @@ function save() {
 
 function deleteEvent() {
   if (confirm('Are you sure you want to delete this event?')) {
-    console.log('Deleting event with ID:', props.event.event.id);
-    emit('delete', props.event?.event?.id)
+    console.log('Deleting event with ID:', props.event.id);
+    emit('delete', props.event?.id)
   }
 }
 

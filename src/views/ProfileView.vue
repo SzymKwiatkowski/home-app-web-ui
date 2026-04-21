@@ -73,6 +73,28 @@
       </div>
     </div>
 
+    <!-- Currency preference -->
+    <div class="section-label">Default currency</div>
+    <div class="card" style="margin-bottom:1.5rem">
+      <p class="text-secondary text-sm" style="margin-bottom:1rem">
+        Used by default when creating new expenses and incomes.
+      </p>
+      <div class="currency-grid">
+        <button
+          v-for="cur in currencyStore.currencies"
+          :key="cur.code"
+          class="currency-card"
+          :class="{ active: currencyStore.defaultCode === cur.code }"
+          @click="currencyStore.setDefault(cur.code)"
+        >
+          <span class="cur-symbol">{{ cur.symbol }}</span>
+          <span class="cur-code">{{ cur.code }}</span>
+          <span class="cur-name text-xs text-muted">{{ cur.name }}</span>
+          <span v-if="currencyStore.defaultCode === cur.code" class="cur-check">✓</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Edit profile -->
     <div class="section-label">Edit profile</div>
     <div class="card" style="margin-bottom:1.5rem">
@@ -112,6 +134,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useEntriesStore } from '@/stores/entries'
 import { useExpenseTypesStore } from '@/stores/expenseTypes'
 import { useThemeStore } from '@/stores/theme'
+import { useCurrencyStore } from '@/stores/currency'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 
@@ -119,6 +142,7 @@ const auth = useAuthStore()
 const entriesStore = useEntriesStore()
 const typesStore = useExpenseTypesStore()
 const themeStore = useThemeStore()
+const currencyStore = useCurrencyStore()
 const router = useRouter()
 
 const saved = ref(false)
@@ -252,4 +276,33 @@ function handleLogout() {
 }
 .form-fields { display: flex; flex-direction: column; gap: 1rem; }
 .danger-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.currency-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+@media (max-width: 500px) {
+  .currency-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.currency-card {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0.625rem 0.25rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer; background: var(--color-surface-2);
+  transition: all 0.18s ease; text-align: center;
+}
+.currency-card:hover { border-color: var(--color-border-strong); transform: translateY(-1px); }
+.currency-card.active { border-color: var(--color-accent); box-shadow: 0 0 0 1px var(--color-accent); background: var(--color-accent-light); }
+.cur-symbol { font-size: 1.125rem; font-weight: 700; color: var(--color-text); line-height: 1; }
+.cur-code { font-size: 0.75rem; font-weight: 600; color: var(--color-text-secondary); margin-top: 0.15rem; }
+.cur-name { display: block; font-size: 0.65rem; margin-top: 0.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cur-check {
+  position: absolute; top: 3px; right: 3px;
+  width: 15px; height: 15px;
+  background: var(--color-accent); color: white;
+  border-radius: 50%; font-size: 0.6rem;
+  display: flex; align-items: center; justify-content: center; font-weight: 700;
+}
 </style>

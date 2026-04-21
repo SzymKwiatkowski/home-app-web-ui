@@ -19,9 +19,11 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 
 const navItems = [
-  { to: '/entries', icon: '📋', label: 'Entries' },
+  { to: '/entries',       icon: '📋', label: 'Entries' },
   { to: '/expense-types', icon: '📊', label: 'Categories' },
-  { to: '/profile', icon: '👤', label: 'Profile' },
+  { to: '/scheduled',     icon: '⏰', label: 'Scheduled' },
+  { to: '/summaries',     icon: '📈', label: 'Summaries' },
+  { to: '/profile',       icon: '👤', label: 'Profile' },
 ]
 
 function isActive(path) {

@@ -1,16 +1,13 @@
 <template>
-    <v-app color="primary">
-      <NavigationBar>
-      </NavigationBar>
-      <v-main class="d-flex-1-100">
-          <CalendarView />
-      </v-main>
-      <FooterComponent/>
-    </v-app>
+  <div class="app-layout">
+    <router-view />
+    <BottomNav v-if="auth.isLoggedIn" />
+  </div>
 </template>
 
 <script setup>
-import CalendarView from '@/views/CalendarView.vue'
-import NavigationBar from '@/components/NavigationBar.vue'
-import FooterComponent from '@/components/FooterComponent.vue';
+import { useAuthStore } from '@/stores/auth'
+import BottomNav from '@/components/BottomNav.vue'
+
+const auth = useAuthStore()
 </script>

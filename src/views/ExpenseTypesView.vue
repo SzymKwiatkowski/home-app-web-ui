@@ -34,12 +34,12 @@
         <div v-for="item in legendItems" :key="item.id" class="legend-item">
           <span class="legend-dot" :style="{ background: item.color }"></span>
           <span class="legend-name text-sm">{{ item.icon }} {{ item.name }}</span>
-          <span class="legend-amount text-sm font-semibold">${{ item.total.toFixed(2) }}</span>
+          <span class="legend-amount text-sm font-semibold">{{ currencyStore.format(item.total) }}</span>
         </div>
       </div>
 
       <div class="chart-total text-sm text-secondary" v-if="hasData">
-        Total: <strong>${{ totalLastMonth.toFixed(2) }}</strong> in the last 30 days
+        Total: <strong>{{ currencyStore.format(totalLastMonth) }}</strong> in the last 30 days
       </div>
     </div>
 
@@ -55,7 +55,7 @@
           </div>
         </div>
         <div class="type-right">
-          <span class="type-total">${{ getTotal(type.id).toFixed(2) }}</span>
+          <span class="type-total">{{ currencyStore.format(getTotal(type.id)) }}</span>
           <div class="type-actions">
             <button class="btn btn-ghost btn-icon btn-sm" @click="openEdit(type)">✏️</button>
             <button class="btn btn-ghost btn-icon btn-sm" @click="confirmDeleteType(type.id)">🗑️</button>
@@ -125,6 +125,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useExpenseTypesStore } from '@/stores/expenseTypes'
 import { useEntriesStore } from '@/stores/entries'
 import { useThemeStore } from '@/stores/theme'
+import { useCurrencyStore } from '@/stores/currency'
 import { Doughnut, Bar, Line } from 'vue-chartjs'
 import {
   Chart as ChartJS, ArcElement, Tooltip, Legend,
@@ -137,6 +138,7 @@ ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEle
 const typesStore = useExpenseTypesStore()
 const entriesStore = useEntriesStore()
 const themeStore = useThemeStore()
+const currencyStore = useCurrencyStore()
 
 const chartType = ref('doughnut')
 const showModal = ref(false)

@@ -13,9 +13,10 @@
         <span class="user-chip-name">{{ usersStore.getById(userId)?.name || 'Unknown' }}</span>
         <button class="chip-remove" @click="remove(userId)" :disabled="modelValue.length === 1 && required">✕</button>
       </div>
-      <button class="add-user-btn" @click="open = !open" v-if="unassignedUsers.length">
+      <button :ref="target" class="add-user-btn" @click="open = !open" v-if="unassignedUsers.length">
         + Assign
       </button>
+      <span>{{open}}</span>
     </div>
 
     <!-- Dropdown -->
@@ -42,17 +43,19 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, useTemplateRef } from 'vue'
 import { useUsersStore } from '@/stores/users'
+import { onClickOutside } from '@vueuse/core'
 
 const props = defineProps({
-  modelValue: { type: Array, default: () => [1] },
+  modelValue: { type: Array, default: () => [] },
   required: { type: Boolean, default: true },
 })
 const emit = defineEmits(['update:modelValue'])
 
 const usersStore = useUsersStore()
 const open = ref(false)
+const target = useTemplateRef('target')
 
 const unassignedUsers = computed(() =>
   usersStore.allUsers.filter(u => !props.modelValue.includes(u.id))
@@ -69,9 +72,7 @@ function remove(userId) {
 }
 
 // Close dropdown on outside click
-function onOutsideClick() { open.value = false }
-onMounted(() => document.addEventListener('click', onOutsideClick))
-onUnmounted(() => document.removeEventListener('click', onOutsideClick))
+onClickOutside(target, _ => open.value = false);
 </script>
 
 <style scoped>

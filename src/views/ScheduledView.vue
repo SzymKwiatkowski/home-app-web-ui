@@ -159,6 +159,11 @@
               </div>
 
               <div class="form-group">
+                <label class="form-label">Assigned to</label>
+                <UserPicker v-model="form.assignedUserIds" />
+              </div>
+
+              <div class="form-group">
                 <label class="form-label">Description</label>
                 <textarea v-model="form.description" class="form-textarea" placeholder="Optional notes..." />
               </div>
@@ -219,11 +224,11 @@ const inactiveCount = computed(() => scheduledStore.items.filter(i => !i.active)
 
 const monthlyExpenseSched = computed(() =>
   scheduledStore.items.filter(i => i.active && i.type === 'expense' && i.recurrence === 'monthly')
-    .reduce((s, i) => s + (parseFloat(i.amount) || 0), 0)
+    .reduce((s, i) => s + (Number.parseFloat(i.amount) || 0), 0)
 )
 const monthlyIncomeSched = computed(() =>
   scheduledStore.items.filter(i => i.active && i.type === 'income' && i.recurrence === 'monthly')
-    .reduce((s, i) => s + (parseFloat(i.amount) || 0), 0)
+    .reduce((s, i) => s + (Number.parseFloat(i.amount) || 0), 0)
 )
 
 function recurrenceLabel(val) { return RECURRENCE_OPTIONS.find(r => r.value === val)?.label || val }
@@ -249,7 +254,7 @@ function saveItem() {
   const data = {
     type: form.type,
     name: form.name,
-    amount: form.type !== 'event' ? parseFloat(form.amount) || null : null,
+    amount: form.type !== 'event' ? Number.parseFloat(form.amount) || null : null,
     currency: form.type !== 'event' ? form.currency : null,
     recurrence: form.recurrence,
     dayOfMonth: form.dayOfMonth || null,
@@ -341,6 +346,8 @@ function doDelete() { scheduledStore.remove(confirmDeleteId.value); confirmDelet
   transition: transform var(--transition);
 }
 .toggle-input:checked + .toggle-track .toggle-thumb { transform: translateX(18px); }
+.sched-users { display: flex; gap: 0.25rem; margin-top: 0.3rem; }
+.user-avatar-xs { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700; color: white; }
 .sched-users { display: flex; gap: 0.25rem; margin-top: 0.3rem; }
 .user-avatar-xs { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700; color: white; }
 </style>

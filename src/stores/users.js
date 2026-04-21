@@ -8,6 +8,7 @@ const AVATAR_COLORS = [
 
 const DEFAULT_USERS = [
   { id: 1, name: 'You', email: '', color: AVATAR_COLORS[0], isSelf: true },
+  { id: 2, name: 'Test User', email: 'mail@gmail.com', color: AVATAR_COLORS[4], isSelf: false }
 ]
 
 export const useUsersStore = defineStore('users', () => {

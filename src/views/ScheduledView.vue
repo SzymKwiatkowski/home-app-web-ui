@@ -43,6 +43,14 @@
               <span>· {{ item.time }}</span>
             </div>
             <div v-if="item.description" class="sched-desc text-sm text-secondary">{{ item.description }}</div>
+            <div v-if="item.assignedUserIds && item.assignedUserIds.length" class="sched-users">
+              <span
+                v-for="uid in item.assignedUserIds" :key="uid"
+                class="user-avatar-xs"
+                :style="{ background: usersStore.getColor(uid) }"
+                :title="usersStore.getById(uid)?.name"
+              >{{ usersStore.getAvatar(uid) }}</span>
+            </div>
             <div v-if="item.nextRun" class="next-run text-xs">
               <span class="text-muted">Next run:</span>
               <span class="font-medium" :class="item.active ? 'text-accent' : 'text-muted'">
@@ -146,6 +154,11 @@
               </div>
 
               <div class="form-group">
+                <label class="form-label">Assigned to</label>
+                <UserPicker v-model="form.assignedUserIds" />
+              </div>
+
+              <div class="form-group">
                 <label class="form-label">Description</label>
                 <textarea v-model="form.description" class="form-textarea" placeholder="Optional notes..." />
               </div>
@@ -184,19 +197,22 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { useScheduledStore, RECURRENCE_OPTIONS } from '@/stores/scheduled'
+import UserPicker from '@/components/UserPicker.vue'
 import { useExpenseTypesStore } from '@/stores/expenseTypes'
 import { useCurrencyStore } from '@/stores/currency'
+import { useUsersStore } from '@/stores/users'
 import dayjs from 'dayjs'
 
 const scheduledStore = useScheduledStore()
 const typesStore = useExpenseTypesStore()
 const currencyStore = useCurrencyStore()
+const usersStore = useUsersStore()
 
 const showModal = ref(false)
 const editingItem = ref(null)
 const confirmDeleteId = ref(null)
 
-const form = reactive({ type: 'expense', name: '', amount: '', currency: currencyStore.defaultCode, recurrence: 'monthly', dayOfMonth: 1, time: '08:00', expenseTypeId: '', description: '', active: true })
+const form = reactive({ type: 'expense', name: '', amount: '', currency: currencyStore.defaultCode, recurrence: 'monthly', dayOfMonth: 1, time: '08:00', expenseTypeId: '', description: '', active: true, assignedUserIds: [1] })
 
 const activeCount = computed(() => scheduledStore.items.filter(i => i.active).length)
 const inactiveCount = computed(() => scheduledStore.items.filter(i => !i.active).length)
@@ -218,7 +234,7 @@ function formatDate(date) {
 
 function openAdd() {
   editingItem.value = null
-  Object.assign(form, { type: 'expense', name: '', amount: '', currency: currencyStore.defaultCode, recurrence: 'monthly', dayOfMonth: 1, time: '08:00', expenseTypeId: '', description: '', active: true })
+  Object.assign(form, { type: 'expense', name: '', amount: '', currency: currencyStore.defaultCode, recurrence: 'monthly', dayOfMonth: 1, time: '08:00', expenseTypeId: '', description: '', active: true, assignedUserIds: [1] })
   showModal.value = true
 }
 function openEdit(item) {
@@ -240,7 +256,7 @@ function saveItem() {
     time: form.time,
     expenseTypeId: form.type === 'expense' ? form.expenseTypeId || null : null,
     description: form.description,
-    assignedUserId: 1,
+    assignedUserIds: form.assignedUserIds || [1],
     active: form.active,
     nextRun: form.dayOfMonth ? computeNextRun(form.dayOfMonth) : null,
   }
@@ -325,4 +341,6 @@ function doDelete() { scheduledStore.remove(confirmDeleteId.value); confirmDelet
   transition: transform var(--transition);
 }
 .toggle-input:checked + .toggle-track .toggle-thumb { transform: translateX(18px); }
+.sched-users { display: flex; gap: 0.25rem; margin-top: 0.3rem; }
+.user-avatar-xs { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700; color: white; }
 </style>

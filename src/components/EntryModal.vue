@@ -68,6 +68,12 @@
               </div>
             </template>
 
+            <!-- Assigned users -->
+            <div class="form-group">
+              <label class="form-label">Assigned to</label>
+              <UserPicker v-model="form.assignedUserIds" />
+            </div>
+
             <div class="form-group">
               <label class="form-label">Description</label>
               <textarea v-model="form.description" class="form-textarea" placeholder="Optional notes..." />
@@ -91,6 +97,7 @@ import { reactive, computed } from 'vue'
 import { useEntriesStore } from '@/stores/entries'
 import { useExpenseTypesStore } from '@/stores/expenseTypes'
 import { useCurrencyStore } from '@/stores/currency'
+import UserPicker from '@/components/UserPicker.vue'
 import dayjs from 'dayjs'
 
 const props = defineProps({
@@ -114,6 +121,7 @@ const form = reactive({
   amount: props.entry?.amount || '',
   currency: props.entry?.currency || currencyStore.defaultCode,
   expenseTypeId: props.entry?.expenseTypeId || '',
+  assignedUserIds: props.entry?.assignedUserIds || (props.entry?.assignedUserId ? [props.entry.assignedUserId] : [1]),
   description: props.entry?.description || '',
 })
 
@@ -130,8 +138,8 @@ function handleSave() {
     amount: (form.type === 'expense' || form.type === 'income') ? parseFloat(form.amount) : null,
     currency: (form.type === 'expense' || form.type === 'income') ? form.currency : null,
     expenseTypeId: form.type === 'expense' ? form.expenseTypeId : null,
+    assignedUserIds: form.assignedUserIds,
     description: form.description,
-    assignedUserId: 1,
   }
 
   if (isEdit.value) {
@@ -148,25 +156,14 @@ function handleSave() {
 .type-selector { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
 .type-btn {
   flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem;
-  padding: 0.6rem 0.25rem;
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 0.8125rem; font-weight: 500;
-  color: var(--color-text-secondary);
-  cursor: pointer; transition: all var(--transition);
-  background: var(--color-surface-2);
+  padding: 0.6rem 0.25rem; border: 2px solid var(--color-border);
+  border-radius: var(--radius-md); font-size: 0.8125rem; font-weight: 500;
+  color: var(--color-text-secondary); cursor: pointer;
+  transition: all var(--transition); background: var(--color-surface-2);
 }
 .type-btn:hover { border-color: var(--color-border-strong); }
-.type-btn.active {
-  border-color: var(--color-text);
-  background: var(--color-text);
-  color: var(--color-bg);
-}
-.type-btn.income.active {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-  color: white;
-}
+.type-btn.active { border-color: var(--color-text); background: var(--color-text); color: var(--color-bg); }
+.type-btn.income.active { border-color: var(--color-accent); background: var(--color-accent); color: white; }
 .form-fields { display: flex; flex-direction: column; gap: 1rem; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 .amount-input { position: relative; }

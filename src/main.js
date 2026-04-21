@@ -11,6 +11,10 @@ app.use(router)
 
 // Apply saved theme before first render to avoid flash
 import { useThemeStore } from './stores/theme'
-useThemeStore() // constructor call triggers applyTheme()
+useThemeStore()
+
+// Initialise users store so self user is always available
+import { useUsersStore } from './stores/users'
+useUsersStore()
 
 app.mount('#app')

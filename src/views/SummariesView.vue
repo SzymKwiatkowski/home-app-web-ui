@@ -56,6 +56,19 @@
           <option v-for="t in typesStore.types" :key="t.id" :value="t.id">{{ t.icon }} {{ t.name }}</option>
         </select>
       </div>
+      <div class="filter-group">
+        <span class="filter-group-label text-xs text-muted">User</span>
+        <select v-model="activeUserFilter" class="form-select filter-select">
+          <option value="">All users</option>
+          <option v-for="u in usersStore.allUsers" :key="u.id" :value="u.id">{{ u.name }}</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-group-label text-xs text-muted">Status</span>
+        <div class="type-filter">
+          <button v-for="s in statusFilters" :key="s.value" class="filter-chip" :class="{ active: activeStatusFilter === s.value }" @click="activeStatusFilter = s.value">{{ s.label }}</button>
+        </div>
+      </div>
     </div>
 
     <!-- Summary sections -->
@@ -78,9 +91,15 @@
                 <div class="font-medium text-sm">{{ entry.name }}</div>
                 <div class="text-xs text-muted">{{ formatDate(entry.date, entry.time) }}</div>
                 <div v-if="entry.description" class="text-xs text-secondary">{{ entry.description }}</div>
+                <div v-if="getAssignedUsers(entry).length" class="sum-users">
+                  <span v-for="u in getAssignedUsers(entry)" :key="u.id" class="user-avatar-xs" :style="{ background: u.color }" :title="u.name">{{ u.name[0] }}</span>
+                </div>
               </div>
             </div>
-            <div class="sum-amount income-color">+{{ currencyStore.format(entry.amount, entry.currency) }}</div>
+            <div class="sum-row-right">
+              <div class="sum-amount income-color">+{{ currencyStore.format(entry.amount, entry.currency) }}</div>
+              <span :class="['status-dot', entry.completed ? 'done' : 'pending']" :title="entry.completed ? 'Received' : 'Pending'"></span>
+            </div>
           </div>
         </div>
         <div v-else class="no-data text-muted text-sm">No incomes recorded for this month.</div>
@@ -124,9 +143,15 @@
                   <span v-if="getCatName(entry.expenseTypeId)"> · {{ getCatName(entry.expenseTypeId) }}</span>
                 </div>
                 <div v-if="entry.description" class="text-xs text-secondary">{{ entry.description }}</div>
+                <div v-if="getAssignedUsers(entry).length" class="sum-users">
+                  <span v-for="u in getAssignedUsers(entry)" :key="u.id" class="user-avatar-xs" :style="{ background: u.color }" :title="u.name">{{ u.name[0] }}</span>
+                </div>
               </div>
             </div>
-            <div class="sum-amount expense-color">−{{ currencyStore.format(entry.amount, entry.currency) }}</div>
+            <div class="sum-row-right">
+              <div class="sum-amount expense-color">−{{ currencyStore.format(entry.amount, entry.currency) }}</div>
+              <span :class="['status-dot', entry.completed ? 'done' : 'pending']" :title="entry.completed ? 'Paid' : 'Unpaid'"></span>
+            </div>
           </div>
         </div>
         <div v-else class="no-data text-muted text-sm">No expenses recorded for this month.</div>
@@ -162,11 +187,13 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useEntriesStore } from '@/stores/entries'
+import { useUsersStore } from '@/stores/users'
 import { useExpenseTypesStore } from '@/stores/expenseTypes'
 import { useCurrencyStore } from '@/stores/currency'
 import dayjs from 'dayjs'
 
 const entriesStore = useEntriesStore()
+const usersStore = useUsersStore()
 const typesStore = useExpenseTypesStore()
 const currencyStore = useCurrencyStore()
 
@@ -185,6 +212,13 @@ const summary = computed(() => entriesStore.getMonthlySummary(currentMonth.value
 // Filters
 const activeTypeFilter = ref('all')
 const activeCategoryFilter = ref('')
+const activeUserFilter = ref('')
+const activeStatusFilter = ref('all')
+const statusFilters = [
+  { label: 'All', value: 'all' },
+  { label: '✓ Completed', value: 'completed' },
+  { label: '○ Pending', value: 'pending' },
+]
 
 const typeFilters = [
   { label: 'All', value: 'all' },
@@ -193,11 +227,21 @@ const typeFilters = [
   { label: '📅 Events', value: 'event' },
 ]
 
-const filteredIncomes = computed(() => summary.value.incomes)
+const filteredIncomes = computed(() => {
+  let list = summary.value.incomes
+  if (activeUserFilter.value) list = list.filter(e => (e.assignedUserIds || [e.assignedUserId]).includes(Number(activeUserFilter.value)))
+  if (activeStatusFilter.value === 'completed') list = list.filter(e => e.completed)
+  if (activeStatusFilter.value === 'pending') list = list.filter(e => !e.completed)
+  return list
+})
 
 const filteredExpenses = computed(() => {
-  if (!activeCategoryFilter.value) return summary.value.expenses
-  return summary.value.expenses.filter(e => e.expenseTypeId == activeCategoryFilter.value)
+  let list = summary.value.expenses
+  if (activeCategoryFilter.value) list = list.filter(e => e.expenseTypeId == activeCategoryFilter.value)
+  if (activeUserFilter.value) list = list.filter(e => (e.assignedUserIds || [e.assignedUserId]).includes(Number(activeUserFilter.value)))
+  if (activeStatusFilter.value === 'completed') list = list.filter(e => e.completed)
+  if (activeStatusFilter.value === 'pending') list = list.filter(e => !e.completed)
+  return list
 })
 
 const incomesTotal = computed(() => filteredIncomes.value.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0))
@@ -206,13 +250,13 @@ const expensesTotal = computed(() => filteredExpenses.value.reduce((s, e) => s +
 // Category breakdown chart data
 const categoryBreakdown = computed(() => {
   const exp = summary.value.expenses
-  const total = exp.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
+  const total = exp.reduce((s, e) => s + (Number.parseFloat(e.amount) || 0), 0)
   const map = {}
   for (const e of exp) {
     const cat = typesStore.getById(e.expenseTypeId)
     const key = e.expenseTypeId || 'other'
     if (!map[key]) map[key] = { id: key, name: cat?.name || 'Other', icon: cat?.icon || '💸', color: (cat?.color || '#888') + 'cc', total: 0, count: 0 }
-    map[key].total += parseFloat(e.amount) || 0
+    map[key].total += Number.parseFloat(e.amount) || 0
     map[key].count++
   }
   return Object.values(map)
@@ -223,7 +267,11 @@ const categoryBreakdown = computed(() => {
 function getCatIcon(id) { return typesStore.getById(id)?.icon || '💸' }
 function getCatName(id) { return typesStore.getById(id)?.name || '' }
 function getCatColor(id) { return (typesStore.getById(id)?.color || '#888') + '22' }
-function formatDate(date, time) { return dayjs(`${date} ${time}`).format('MMM D, HH:mm') }
+function formatDate(date, time) { return dayjs(`\\${date} \\${time}\\`).format('MMM D, HH:mm') }
+function getAssignedUsers(entry) {
+  const ids = entry.assignedUserIds || (entry.assignedUserId ? [entry.assignedUserId] : [])
+  return ids.map(id => usersStore.getById(id)).filter(Boolean)
+}
 </script>
 
 <style scoped>
@@ -283,4 +331,10 @@ function formatDate(date, time) { return dayjs(`${date} ${time}`).format('MMM D,
 .sum-amount { font-weight: 600; font-size: 0.9rem; flex-shrink: 0; }
 .no-data { padding: 1rem; text-align: center; }
 .badge-income { background: var(--color-accent-light); color: var(--color-accent); }
+.sum-row-right { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.status-dot.done { background: var(--color-accent); }
+.status-dot.pending { background: var(--color-warning, #b7791f); border: 2px solid currentColor; background: transparent; }
+.sum-users { display: flex; gap: 0.2rem; margin-top: 0.2rem; }
+.user-avatar-xs { width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.55rem; font-weight: 700; color: white; }
 </style>

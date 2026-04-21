@@ -116,6 +116,80 @@
       </div>
     </div>
 
+    <!-- Users -->
+    <div class="section-label">Users</div>
+    <div class="card" style="margin-bottom:1.5rem">
+      <p class="text-secondary text-sm" style="margin-bottom:1rem">
+        Users can be assigned to entries, incomes, and events.
+      </p>
+      <div class="users-list">
+        <div v-for="user in usersStore.allUsers" :key="user.id" class="user-row">
+          <div class="user-row-left">
+            <span class="user-avatar-md" :style="{ background: user.color }">{{ user.name[0].toUpperCase() }}</span>
+            <div>
+              <div class="font-medium text-sm">{{ user.name }} <span v-if="user.isSelf" class="badge badge-neutral" style="font-size:0.65rem">You</span></div>
+              <div v-if="user.email" class="text-xs text-muted">{{ user.email }}</div>
+            </div>
+          </div>
+          <div class="user-row-actions">
+            <button class="btn btn-ghost btn-icon btn-sm" @click="openEditUser(user)" title="Edit">✏️</button>
+            <button v-if="!user.isSelf" class="btn btn-ghost btn-icon btn-sm" @click="confirmRemoveUserId = user.id" title="Remove">🗑️</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:0.75rem" @click="openAddUser">+ Add user</button>
+    </div>
+
+    <!-- User add/edit modal -->
+    <Teleport to="body">
+      <div v-if="showUserModal" class="modal-backdrop" @click.self="closeUserModal">
+        <div class="modal" style="max-width:400px">
+          <div class="modal-header">
+            <h3>{{ editingUser ? 'Edit user' : 'Add user' }}</h3>
+            <button class="btn btn-ghost btn-icon" @click="closeUserModal">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-fields">
+              <div class="form-group">
+                <label class="form-label">Name *</label>
+                <input v-model="userForm.name" class="form-input" placeholder="Full name" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email</label>
+                <input v-model="userForm.email" class="form-input" type="email" placeholder="email@example.com" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Avatar colour</label>
+                <div class="color-swatches">
+                  <button
+                    v-for="col in avatarColors" :key="col"
+                    class="color-swatch"
+                    :class="{ selected: userForm.color === col }"
+                    :style="{ background: col }"
+                    @click="userForm.color = col"
+                  ></button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeUserModal">Cancel</button>
+            <button class="btn btn-primary" @click="saveUser">{{ editingUser ? 'Save' : 'Add' }}</button>
+          </div>
+        </div>
+      </div>
+      <div v-if="confirmRemoveUserId" class="modal-backdrop" @click.self="confirmRemoveUserId = null">
+        <div class="modal" style="max-width:360px">
+          <div class="modal-header"><h3>Remove user?</h3></div>
+          <div class="modal-body"><p class="text-secondary">Their entries will remain but become unassigned.</p></div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="confirmRemoveUserId = null">Cancel</button>
+            <button class="btn btn-danger" @click="doRemoveUser">Remove</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Account -->
     <div class="section-label">Account</div>
     <div class="card-flat danger-card">
@@ -135,6 +209,7 @@ import { useEntriesStore } from '@/stores/entries'
 import { useExpenseTypesStore } from '@/stores/expenseTypes'
 import { useThemeStore } from '@/stores/theme'
 import { useCurrencyStore } from '@/stores/currency'
+import { useUsersStore } from '@/stores/users'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 
@@ -143,6 +218,7 @@ const entriesStore = useEntriesStore()
 const typesStore = useExpenseTypesStore()
 const themeStore = useThemeStore()
 const currencyStore = useCurrencyStore()
+const usersStore = useUsersStore()
 const router = useRouter()
 
 const saved = ref(false)
@@ -174,6 +250,36 @@ function handleLogout() {
   auth.logout()
   router.push('/login')
 }
+
+// User management
+const AVATAR_COLORS_LIST = ['#2d6a4f','#1a6eb5','#c2556a','#c47a1a','#7c3aed','#0891b2','#be185d','#15803d']
+const avatarColors = AVATAR_COLORS_LIST
+const showUserModal = ref(false)
+const editingUser = ref(null)
+const confirmRemoveUserId = ref(null)
+const userForm = reactive({ name: '', email: '', color: AVATAR_COLORS_LIST[1] })
+
+function openAddUser() {
+  editingUser.value = null
+  Object.assign(userForm, { name: '', email: '', color: AVATAR_COLORS_LIST[1] })
+  showUserModal.value = true
+}
+function openEditUser(user) {
+  editingUser.value = user
+  Object.assign(userForm, { name: user.name, email: user.email || '', color: user.color })
+  showUserModal.value = true
+}
+function closeUserModal() { showUserModal.value = false; editingUser.value = null }
+function saveUser() {
+  if (!userForm.name) return
+  if (editingUser.value) {
+    usersStore.updateUser(editingUser.value.id, { name: userForm.name, email: userForm.email, color: userForm.color })
+  } else {
+    usersStore.addUser({ name: userForm.name, email: userForm.email, color: userForm.color })
+  }
+  closeUserModal()
+}
+function doRemoveUser() { usersStore.removeUser(confirmRemoveUserId.value); confirmRemoveUserId.value = null }
 </script>
 
 <style scoped>
@@ -305,4 +411,14 @@ function handleLogout() {
   border-radius: 50%; font-size: 0.6rem;
   display: flex; align-items: center; justify-content: center; font-weight: 700;
 }
+.users-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.user-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem; border-radius: var(--radius-sm); background: var(--color-surface-2); }
+.user-row-left { display: flex; align-items: center; gap: 0.625rem; }
+.user-avatar-md { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; font-weight: 700; color: white; flex-shrink: 0; }
+.user-row-actions { display: flex; gap: 0.125rem; }
+.form-fields { display: flex; flex-direction: column; gap: 1rem; }
+.color-swatches { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.color-swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: border-color 0.15s; }
+.color-swatch.selected { border-color: var(--color-text); }
+.color-swatch:hover { transform: scale(1.1); }
 </style>

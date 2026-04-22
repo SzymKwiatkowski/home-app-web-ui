@@ -86,7 +86,10 @@
               <div class="form-row">
                 <div class="form-group">
                   <label class="form-label">Icon (emoji)</label>
-                  <input v-model="form.icon" class="form-input" placeholder="🍽️" maxlength="4" />
+                  <div class="icon-picker-row">
+                    <EmojiPicker v-model="form.icon" />
+                    <span class="icon-preview" :style="{ background: form.color + '22' }">{{ form.icon || '?' }}</span>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Color</label>
@@ -127,6 +130,7 @@ import { useEntriesStore } from '@/stores/entries'
 import { useThemeStore } from '@/stores/theme'
 import { useCurrencyStore } from '@/stores/currency'
 import { Doughnut, Bar, Line } from 'vue-chartjs'
+import EmojiPicker from '@/components/EmojiPicker.vue'
 import {
   Chart as ChartJS, ArcElement, Tooltip, Legend,
   CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler
@@ -281,4 +285,10 @@ function doDelete() { typesStore.deleteType(confirmDeleteId.value); confirmDelet
 .color-picker-row { display: flex; align-items: center; gap: 0.5rem; }
 .color-input { width: 50px; padding: 0.25rem; height: 40px; cursor: pointer; }
 .color-preview { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--color-border); }
+.icon-picker-row { display: flex; align-items: center; gap: 0.625rem; }
+.icon-preview {
+  width: 44px; height: 44px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.375rem; flex-shrink: 0; border: 1px solid var(--color-border);
+}
 </style>

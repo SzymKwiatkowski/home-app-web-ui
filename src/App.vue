@@ -1,15 +1,23 @@
 <template>
   <div class="app-layout">
-    <NotificationBanner v-if="auth.isLoggedIn" />
     <router-view />
-    <BottomNav v-if="auth.isLoggedIn" />
+    <BottomNav
+      v-if="auth.isLoggedIn"
+      @open-notifications="notifPanelOpen = true"
+    />
+    <NotificationPanel
+      v-if="auth.isLoggedIn"
+      v-model="notifPanelOpen"
+    />
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import BottomNav from '@/components/BottomNav.vue'
-import NotificationBanner from '@/components/NotificationBanner.vue'
+import NotificationPanel from '@/components/NotificationPanel.vue'
 
 const auth = useAuthStore()
+const notifPanelOpen = ref(false)
 </script>

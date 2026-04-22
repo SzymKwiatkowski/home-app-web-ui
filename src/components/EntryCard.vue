@@ -1,5 +1,5 @@
 <template>
-  <div class="entry-card card-flat" :class="[entry.type, { completed: entry.completed }]">
+  <div class="entry-card card-flat" :class="[entry.type, { completed: entry.completed, highlighted: highlighted }]">
     <!-- Completion checkbox -->
     <button
       v-if="entry.type !== 'event' || true"
@@ -63,7 +63,7 @@ import { useUsersStore } from '@/stores/users'
 import { useEntriesStore } from '@/stores/entries'
 import dayjs from 'dayjs'
 
-const props = defineProps({ entry: Object })
+const props = defineProps({ entry: Object, highlighted: { type: Boolean, default: false } })
 defineEmits(['edit', 'delete'])
 
 const typesStore = useExpenseTypesStore()
@@ -169,4 +169,12 @@ const assignedUsers = computed(() => {
 .entry-actions { display: flex; gap: 0.125rem; opacity: 0; transition: opacity var(--transition); }
 .entry-card:hover .entry-actions { opacity: 1; }
 .badge-income { background: var(--color-accent-light); color: var(--color-accent); }
+.entry-card.highlighted {
+  animation: highlight-flash 3s ease forwards;
+}
+@keyframes highlight-flash {
+  0%   { box-shadow: 0 0 0 3px var(--color-accent); background: var(--color-accent-light); }
+  60%  { box-shadow: 0 0 0 3px var(--color-accent); background: var(--color-accent-light); }
+  100% { box-shadow: none; background: transparent; }
+}
 </style>

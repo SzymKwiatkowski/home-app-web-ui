@@ -57,7 +57,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useExpenseTypesStore } from '@/stores/expenseTypes'
+import { useEntryTypesStore } from '@/stores/entryTypes'
 import { useCurrencyStore } from '@/stores/currency'
 import { useUsersStore } from '@/stores/users'
 import { useEntriesStore } from '@/stores/entries'
@@ -66,23 +66,23 @@ import dayjs from 'dayjs'
 const props = defineProps({ entry: Object, highlighted: { type: Boolean, default: false } })
 defineEmits(['edit', 'delete'])
 
-const typesStore = useExpenseTypesStore()
+const typesStore = useEntryTypesStore()
 const currencyStore = useCurrencyStore()
 const usersStore = useUsersStore()
 const entriesStore = useEntriesStore()
 
-const typeObj = computed(() => props.entry.expenseTypeId ? typesStore.getById(props.entry.expenseTypeId) : null)
+const typeObj = computed(() => props.entry.categoryId ? typesStore.getById(props.entry.categoryId) : null)
 
 const entryIcon = computed(() => {
-  if (props.entry.type === 'event') return '📅'
-  if (props.entry.type === 'income') return '💚'
+  if (props.entry.type === 'income') return typeObj.value?.icon || '💚'
+  if (props.entry.type === 'event') return typeObj.value?.icon || '📅'
   return typeObj.value?.icon || '💸'
 })
 
 const iconStyle = computed(() => {
   if (props.entry.completed) return { background: 'var(--color-surface-2)', opacity: '0.7' }
-  if (props.entry.type === 'income') return { background: 'var(--color-accent-light)' }
-  if (props.entry.type === 'event') return { background: 'var(--color-surface-2)' }
+  if (props.entry.type === 'income') return { background: (typeObj.value?.color || 'var(--color-accent)') + '22' }
+  if (props.entry.type === 'event')   return { background: (typeObj.value?.color || '#888') + '22' }
   return { background: (typeObj.value?.color || '#888') + '18' }
 })
 
@@ -91,8 +91,8 @@ const badgeClass = computed(() => ({
 }[props.entry.type]))
 
 const badgeLabel = computed(() => {
-  if (props.entry.type === 'income') return 'Income'
-  if (props.entry.type === 'event') return 'Event'
+  if (props.entry.type === 'income') return typeObj.value?.name || 'Income'
+  if (props.entry.type === 'event')  return typeObj.value?.name || 'Event'
   return typeObj.value?.name || 'Uncategorized'
 })
 

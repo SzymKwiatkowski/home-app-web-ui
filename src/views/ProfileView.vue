@@ -206,7 +206,7 @@
 import { reactive, computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useEntriesStore } from '@/stores/entries'
-import { useExpenseTypesStore } from '@/stores/expenseTypes'
+import { useEntryTypesStore } from '@/stores/entryTypes'
 import { useThemeStore } from '@/stores/theme'
 import { useCurrencyStore } from '@/stores/currency'
 import { useUsersStore } from '@/stores/users'
@@ -215,7 +215,7 @@ import dayjs from 'dayjs'
 
 const auth = useAuthStore()
 const entriesStore = useEntriesStore()
-const typesStore = useExpenseTypesStore()
+const typesStore = useEntryTypesStore()
 const themeStore = useThemeStore()
 const currencyStore = useCurrencyStore()
 const usersStore = useUsersStore()

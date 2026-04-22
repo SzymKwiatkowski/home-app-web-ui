@@ -53,7 +53,7 @@
         <span class="filter-group-label text-xs text-muted">Category</span>
         <select v-model="activeCategoryFilter" class="form-select filter-select">
           <option value="">All categories</option>
-          <option v-for="t in typesStore.types" :key="t.id" :value="t.id">{{ t.icon }} {{ t.name }}</option>
+          <option v-for="t in typesStore.forEntryType('expense')" :key="t.id" :value="t.id">{{ t.icon }} {{ t.name }}</option>
         </select>
       </div>
       <div class="filter-group">
@@ -133,14 +133,14 @@
         <div v-if="filteredExpenses.length" class="entry-group">
           <div v-for="entry in filteredExpenses" :key="entry.id" class="summary-row card-flat">
             <div class="summary-row-left">
-              <div class="sum-icon" :style="{ background: getCatColor(entry.expenseTypeId) }">
-                {{ getCatIcon(entry.expenseTypeId) }}
+              <div class="sum-icon" :style="{ background: getCatColor(entry.categoryId) }">
+                {{ getCatIcon(entry.categoryId) }}
               </div>
               <div>
                 <div class="font-medium text-sm">{{ entry.name }}</div>
                 <div class="text-xs text-muted">
                   {{ formatDate(entry.date, entry.time) }}
-                  <span v-if="getCatName(entry.expenseTypeId)"> · {{ getCatName(entry.expenseTypeId) }}</span>
+                  <span v-if="getCatName(entry.categoryId)"> · {{ getCatName(entry.categoryId) }}</span>
                 </div>
                 <div v-if="entry.description" class="text-xs text-secondary">{{ entry.description }}</div>
                 <div v-if="getAssignedUsers(entry).length" class="sum-users">
@@ -168,11 +168,19 @@
         <div v-if="summary.events.length" class="entry-group">
           <div v-for="entry in summary.events" :key="entry.id" class="summary-row card-flat">
             <div class="summary-row-left">
-              <div class="sum-icon event-icon">📅</div>
+              <div class="sum-icon" :style="{ background: getCatColor(entry.categoryId) }">
+                {{ getCatIcon(entry.categoryId) || '📅' }}
+              </div>
               <div>
                 <div class="font-medium text-sm">{{ entry.name }}</div>
-                <div class="text-xs text-muted">{{ formatDate(entry.date, entry.time) }}</div>
+                <div class="text-xs text-muted">
+                  {{ formatDate(entry.date, entry.time) }}
+                  <span v-if="getCatName(entry.categoryId)"> · {{ getCatName(entry.categoryId) }}</span>
+                </div>
                 <div v-if="entry.description" class="text-xs text-secondary">{{ entry.description }}</div>
+                <div v-if="getAssignedUsers(entry).length" class="sum-users">
+                  <span v-for="u in getAssignedUsers(entry)" :key="u.id" class="user-avatar-xs" :style="{ background: u.color }" :title="u.name">{{ u.name[0] }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -188,13 +196,13 @@
 import { ref, computed } from 'vue'
 import { useEntriesStore } from '@/stores/entries'
 import { useUsersStore } from '@/stores/users'
-import { useExpenseTypesStore } from '@/stores/expenseTypes'
+import { useEntryTypesStore } from '@/stores/entryTypes'
 import { useCurrencyStore } from '@/stores/currency'
 import dayjs from 'dayjs'
 
 const entriesStore = useEntriesStore()
 const usersStore = useUsersStore()
-const typesStore = useExpenseTypesStore()
+const typesStore = useEntryTypesStore()
 const currencyStore = useCurrencyStore()
 
 // Month navigation — default to current month
@@ -237,7 +245,7 @@ const filteredIncomes = computed(() => {
 
 const filteredExpenses = computed(() => {
   let list = summary.value.expenses
-  if (activeCategoryFilter.value) list = list.filter(e => e.expenseTypeId == activeCategoryFilter.value)
+  if (activeCategoryFilter.value) list = list.filter(e => e.categoryId == activeCategoryFilter.value)
   if (activeUserFilter.value) list = list.filter(e => (e.assignedUserIds || [e.assignedUserId]).includes(Number(activeUserFilter.value)))
   if (activeStatusFilter.value === 'completed') list = list.filter(e => e.completed)
   if (activeStatusFilter.value === 'pending') list = list.filter(e => !e.completed)
@@ -250,13 +258,13 @@ const expensesTotal = computed(() => filteredExpenses.value.reduce((s, e) => s +
 // Category breakdown chart data
 const categoryBreakdown = computed(() => {
   const exp = summary.value.expenses
-  const total = exp.reduce((s, e) => s + (Number.parseFloat(e.amount) || 0), 0)
+  const total = exp.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
   const map = {}
   for (const e of exp) {
-    const cat = typesStore.getById(e.expenseTypeId)
-    const key = e.expenseTypeId || 'other'
+    const cat = typesStore.getById(e.categoryId)
+    const key = e.categoryId || 'other'
     if (!map[key]) map[key] = { id: key, name: cat?.name || 'Other', icon: cat?.icon || '💸', color: (cat?.color || '#888') + 'cc', total: 0, count: 0 }
-    map[key].total += Number.parseFloat(e.amount) || 0
+    map[key].total += parseFloat(e.amount) || 0
     map[key].count++
   }
   return Object.values(map)
@@ -266,7 +274,7 @@ const categoryBreakdown = computed(() => {
 
 function getCatIcon(id) { return typesStore.getById(id)?.icon || '💸' }
 function getCatName(id) { return typesStore.getById(id)?.name || '' }
-function getCatColor(id) { return (typesStore.getById(id)?.color || '#888') + '22' }
+function getCatColor(id) { return (typesStore.getById(id)?.color || '#888888') + '22' }
 function formatDate(date, time) { return dayjs(`\\${date} \\${time}\\`).format('MMM D, HH:mm') }
 function getAssignedUsers(entry) {
   const ids = entry.assignedUserIds || (entry.assignedUserId ? [entry.assignedUserId] : [])

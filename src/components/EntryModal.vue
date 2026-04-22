@@ -57,16 +57,18 @@
                 </div>
               </div>
 
-              <div v-if="form.type === 'expense'" class="form-group">
-                <label class="form-label">Category *</label>
-                <select v-model="form.expenseTypeId" class="form-select">
-                  <option value="" disabled>Select category...</option>
-                  <option v-for="t in typesStore.types" :key="t.id" :value="t.id">
-                    {{ t.icon }} {{ t.name }}
-                  </option>
-                </select>
-              </div>
             </template>
+
+            <!-- Category — shown for all entry types when categories exist -->
+            <div class="form-group" v-if="typesStore.forEntryType(form.type).length">
+              <label class="form-label">Category</label>
+              <select v-model="form.categoryId" class="form-select">
+                <option value="">No category</option>
+                <option v-for="t in typesStore.forEntryType(form.type)" :key="t.id" :value="t.id">
+                  {{ t.icon }} {{ t.name }}
+                </option>
+              </select>
+            </div>
 
             <!-- Assigned users -->
             <div class="form-group">
@@ -95,7 +97,7 @@
 <script setup>
 import { reactive, computed } from 'vue'
 import { useEntriesStore } from '@/stores/entries'
-import { useExpenseTypesStore } from '@/stores/expenseTypes'
+import { useEntryTypesStore } from '@/stores/entryTypes'
 import { useCurrencyStore } from '@/stores/currency'
 import UserPicker from '@/components/UserPicker.vue'
 import dayjs from 'dayjs'
@@ -108,7 +110,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved'])
 
 const entriesStore = useEntriesStore()
-const typesStore = useExpenseTypesStore()
+const typesStore = useEntryTypesStore()
 const currencyStore = useCurrencyStore()
 
 const isEdit = computed(() => !!props.entry)
@@ -120,16 +122,14 @@ const form = reactive({
   time: props.entry?.time || dayjs().format('HH:mm'),
   amount: props.entry?.amount || '',
   currency: props.entry?.currency || currencyStore.defaultCode,
-  expenseTypeId: props.entry?.expenseTypeId || '',
-  assignedUserIds: props.entry?.assignedUserIds || (props.entry?.assignedUserId ? [props.entry.assignedUserId] : []),
+  categoryId: props.entry?.categoryId ?? props.entry?.expenseTypeId ?? '',
+  assignedUserIds: props.entry?.assignedUserIds || (props.entry?.assignedUserId ? [props.entry.assignedUserId] : [1]),
   description: props.entry?.description || '',
 })
 
 function handleSave() {
   if (!form.name || !form.date || !form.time) return
   if ((form.type === 'expense' || form.type === 'income') && !form.amount) return
-  if (form.type === 'expense' && !form.expenseTypeId) return
-
   const data = {
     type: form.type,
     name: form.name,
@@ -137,7 +137,7 @@ function handleSave() {
     time: form.time,
     amount: (form.type === 'expense' || form.type === 'income') ? parseFloat(form.amount) : null,
     currency: (form.type === 'expense' || form.type === 'income') ? form.currency : null,
-    expenseTypeId: form.type === 'expense' ? form.expenseTypeId : null,
+    categoryId: form.categoryId || null,
     assignedUserIds: form.assignedUserIds,
     description: form.description,
   }

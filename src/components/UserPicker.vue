@@ -16,7 +16,6 @@
       <button :ref="target" class="add-user-btn" @click="open = !open" v-if="unassignedUsers.length">
         + Assign
       </button>
-      <span>{{open}}</span>
     </div>
 
     <!-- Dropdown -->

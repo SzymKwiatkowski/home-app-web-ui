@@ -9,11 +9,11 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 
-// Apply saved theme before first render to avoid flash
+// Apply saved theme immediately (no network needed)
 import { useThemeStore } from './stores/theme'
 useThemeStore()
 
-// Initialise users store so self user is always available
+// Init users store (local only)
 import { useUsersStore } from './stores/users'
 useUsersStore()
 

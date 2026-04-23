@@ -1,9 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { getAccessToken } from '@/api/client'
 
 const routes = [
-  { path: '/login', name: 'Login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
-  { path: '/', redirect: '/entries' },
+  { path: '/login',         name: 'Login',        component: () => import('@/views/LoginView.vue'),        meta: { public: true } },
+  { path: '/',              redirect: '/entries' },
   { path: '/entries',       name: 'Entries',      component: () => import('@/views/EntriesView.vue') },
   { path: '/expense-types', name: 'ExpenseTypes', component: () => import('@/views/ExpenseTypesView.vue') },
   { path: '/scheduled',     name: 'Scheduled',    component: () => import('@/views/ScheduledView.vue') },
@@ -17,9 +17,9 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const auth = useAuthStore()
-  if (!to.meta.public && !auth.isLoggedIn) return '/login'
-  if (to.path === '/login' && auth.isLoggedIn) return '/entries'
+  const hasToken = !!getAccessToken()
+  if (!to.meta.public && !hasToken) return '/login'
+  if (to.path === '/login' && hasToken) return '/entries'
 })
 
 export default router

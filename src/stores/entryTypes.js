@@ -29,8 +29,8 @@ export const useEntryTypesStore = defineStore('entryTypes', () => {
     const m = meta.value[kind.id] || {}
     return {
       ...kind,
-      icon:  m.icon  || DEFAULT_ICONS[kind.entryType]  || '🏷️',
-      color: m.color || DEFAULT_COLORS[kind.entryType] || AVATAR_COLORS[kind.id % AVATAR_COLORS.length],
+      icon:  kind.icon  || DEFAULT_ICONS[kind.entryType]  || '🏷️',
+      color: kind.color || DEFAULT_COLORS[kind.entryType] || AVATAR_COLORS[kind.id % AVATAR_COLORS.length],
     }
   }
 

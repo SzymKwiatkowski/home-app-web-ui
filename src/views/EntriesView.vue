@@ -124,10 +124,10 @@ const groupedEntries = computed(() => {
 const thisMonth = dayjs().format('YYYY-MM')
 const totalEntries = computed(() => store.entries.filter(e => e.date.startsWith(thisMonth)).length)
 const monthlyExpenses = computed(() =>
-  store.expensesOnly.filter(e => e.date.startsWith(thisMonth)).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
+  store.expensesOnly.filter(e => e.date.startsWith(thisMonth)).reduce((s, e) => s + (Number.parseFloat(e.amount) || 0), 0)
 )
 const monthlyIncome = computed(() =>
-  store.incomesOnly.filter(e => e.date.startsWith(thisMonth)).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
+  store.incomesOnly.filter(e => e.date.startsWith(thisMonth)).reduce((s, e) => s + (Number.parseFloat(e.amount) || 0), 0)
 )
 const monthlyBalance = computed(() => monthlyIncome.value - monthlyExpenses.value)
 

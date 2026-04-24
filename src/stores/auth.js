@@ -3,33 +3,46 @@ import { ref, computed } from 'vue'
 import { usersApi } from '@/api/adapters'
 import { setTokens, clearTokens, getAccessToken } from '@/api/client'
 
+/** Decode the `sub` claim from a JWT without verifying signature */
+function jwtSub(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return payload.sub || payload.nameid || null
+  } catch {
+    return null
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(JSON.parse(localStorage.getItem('et_user') || 'null'))
+  const user    = ref(JSON.parse(localStorage.getItem('et_user') || 'null'))
   const loading = ref(false)
-  const error = ref(null)
+  const error   = ref(null)
 
   const isLoggedIn = computed(() => !!user.value && !!getAccessToken())
 
   async function login(email, password) {
     loading.value = true
-    error.value = null
+    error.value   = null
     try {
-      const data = await usersApi.login(email, password)
-      setTokens(data.accessToken, data.refreshToken)
+      const tokenData = await usersApi.login(email, password)
+      setTokens(tokenData.accessToken, tokenData.refreshToken)
 
-      // Fetch profile info to get email confirmation status
+      // Extract user UUID from JWT sub claim
+      const userId = jwtSub(tokenData.accessToken)
+
       const info = await usersApi.getInfo()
+      const displayName = info.email.split('@')[0]
 
       user.value = {
-        id: null,          // API has no user ID on login response
+        id: userId,
         email: info.email,
-        name: email.split('@')[0],   // derive display name from email until API provides it
-        avatar: email[0].toUpperCase(),
+        name: displayName,
+        avatar: displayName[0].toUpperCase(),
         isEmailConfirmed: info.isEmailConfirmed,
         joinedAt: new Date().toISOString(),
       }
       localStorage.setItem('et_user', JSON.stringify(user.value))
-      _syncSelf(user.value.name, user.value.email)
+      _syncSelf(userId, displayName, info.email)
       return true
     } catch (e) {
       error.value = e.message || 'Login failed'
@@ -41,7 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function register(email, password) {
     loading.value = true
-    error.value = null
+    error.value   = null
     try {
       await usersApi.register(email, password)
       return true
@@ -61,22 +74,19 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function updateProfile(data) {
     loading.value = true
-    error.value = null
+    error.value   = null
     try {
-      if (data.email || data.password) {
+      if (data.email || data.newPassword) {
         await usersApi.updateInfo({
-          newEmail: data.email || undefined,
-          newPassword: data.password || undefined,
+          newEmail:    data.email       || undefined,
+          newPassword: data.newPassword || undefined,
           oldPassword: data.oldPassword || undefined,
         })
       }
-      user.value = {
-        ...user.value,
-        ...data,
-        avatar: (data.name || user.value.name || user.value.email)[0].toUpperCase(),
-      }
+      const name = data.name || user.value.name
+      user.value = { ...user.value, ...data, name, avatar: name[0].toUpperCase() }
       localStorage.setItem('et_user', JSON.stringify(user.value))
-      _syncSelf(user.value.name, user.value.email)
+      _syncSelf(user.value.id, name, user.value.email)
       return true
     } catch (e) {
       error.value = e.message || 'Update failed'
@@ -86,9 +96,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function _syncSelf(name, email) {
+  function _syncSelf(id, name, email) {
     import('./users').then(({ useUsersStore }) => {
-      useUsersStore().syncSelf(name, email)
+      useUsersStore().syncSelf(id, name, email)
     })
   }
 

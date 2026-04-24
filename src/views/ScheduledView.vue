@@ -38,9 +38,10 @@
           <div class="sched-info">
             <div class="sched-name font-medium">{{ item.name }}</div>
             <div class="sched-meta text-xs text-muted">
-              <span class="recurrence-badge badge badge-neutral">{{ recurrenceLabel(item.recurrence) }}</span>
-              <span v-if="item.dayOfMonth">· Day {{ item.dayOfMonth }}</span>
-              <span>· {{ item.time }}</span>
+              <span class="recurrence-badge badge badge-neutral">{{ describeCron(item.periodDefinition || buildCronFromItem(item)) }}</span>
+            </div>
+            <div v-if="item.periodDefinition" class="cron-raw text-xs text-muted font-mono">
+              {{ item.periodDefinition }}
             </div>
             <div v-if="item.description" class="sched-desc text-sm text-secondary">{{ item.description }}</div>
             <div v-if="item.assignedUserIds && item.assignedUserIds.length" class="sched-users">
@@ -145,17 +146,12 @@
                 <input v-model="form.time" class="form-input" type="time" />
               </div>
 
-              <div v-if="form.type === 'expense'" class="form-group">
+              <div class="form-group" v-if="typesStore.forEntryType(form.type).length">
                 <label class="form-label">Category</label>
-                <select v-model="form.expenseTypeId" class="form-select">
-                  <option value="">None</option>
-                  <option v-for="t in typesStore.types" :key="t.id" :value="t.id">{{ t.icon }} {{ t.name }}</option>
+                <select v-model="form.categoryId" class="form-select">
+                  <option value="">No category</option>
+                  <option v-for="t in typesStore.forEntryType(form.type)" :key="t.id" :value="t.id">{{ t.icon }} {{ t.name }}</option>
                 </select>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Assigned to</label>
-                <UserPicker v-model="form.assignedUserIds" />
               </div>
 
               <div class="form-group">
@@ -201,15 +197,16 @@
 
 <script setup>
 import { ref, reactive, computed } from 'vue'
-import { useScheduledStore, RECURRENCE_OPTIONS } from '@/stores/scheduled'
+import { useScheduledStore } from '@/stores/scheduled'
+import { buildCron, parseCron, describeCron, RECURRENCE_OPTIONS, DAYS_OF_WEEK, MONTHS } from '@/api/cron'
 import UserPicker from '@/components/UserPicker.vue'
-import { useExpenseTypesStore } from '@/stores/expenseTypes'
+import { useEntryTypesStore } from '@/stores/entryTypes'
 import { useCurrencyStore } from '@/stores/currency'
 import { useUsersStore } from '@/stores/users'
 import dayjs from 'dayjs'
 
 const scheduledStore = useScheduledStore()
-const typesStore = useExpenseTypesStore()
+const typesStore = useEntryTypesStore()
 const currencyStore = useCurrencyStore()
 const usersStore = useUsersStore()
 
@@ -217,21 +214,40 @@ const showModal = ref(false)
 const editingItem = ref(null)
 const confirmDeleteId = ref(null)
 
-const form = reactive({ type: 'expense', name: '', amount: '', currency: currencyStore.defaultCode, recurrence: 'monthly', dayOfMonth: 1, time: '08:00', expenseTypeId: '', description: '', active: true, assignedUserIds: [1] })
+const form = reactive({ type: 'expense', name: '', amount: '', currency: currencyStore.defaultCode, recurrence: 'monthly', dayOfMonth: 1, dayOfWeek: 2, month: 1, time: '08:00', categoryId: '', description: '', active: true, assignedUserIds: [usersStore.selfId] })
 
 const activeCount = computed(() => scheduledStore.items.filter(i => i.active).length)
 const inactiveCount = computed(() => scheduledStore.items.filter(i => !i.active).length)
 
 const monthlyExpenseSched = computed(() =>
   scheduledStore.items.filter(i => i.active && i.type === 'expense' && i.recurrence === 'monthly')
-    .reduce((s, i) => s + (Number.parseFloat(i.amount) || 0), 0)
+    .reduce((s, i) => s + (parseFloat(i.amount) || 0), 0)
 )
 const monthlyIncomeSched = computed(() =>
   scheduledStore.items.filter(i => i.active && i.type === 'income' && i.recurrence === 'monthly')
-    .reduce((s, i) => s + (Number.parseFloat(i.amount) || 0), 0)
+    .reduce((s, i) => s + (parseFloat(i.amount) || 0), 0)
 )
 
-function recurrenceLabel(val) { return RECURRENCE_OPTIONS.find(r => r.value === val)?.label || val }
+// Helpers for cron display
+function buildCronFromItem(item) {
+  return buildCron({
+    recurrence: item.recurrence || 'monthly',
+    time: item.time || '08:00',
+    dayOfMonth: item.dayOfMonth || 1,
+    dayOfWeek: item.dayOfWeek || 2,
+    month: item.month || 1,
+  })
+}
+
+// Live preview computed from form
+const previewCron = computed(() => buildCron({
+  recurrence: form.recurrence,
+  time: form.time,
+  dayOfMonth: form.dayOfMonth,
+  dayOfWeek: form.dayOfWeek,
+  month: form.month,
+}))
+const previewDesc = computed(() => describeCron(previewCron.value))
 function formatDate(date) {
   const d = dayjs(date)
   return d.isSame(dayjs(), 'day') ? 'Today' : d.format('MMM D, YYYY')
@@ -239,12 +255,20 @@ function formatDate(date) {
 
 function openAdd() {
   editingItem.value = null
-  Object.assign(form, { type: 'expense', name: '', amount: '', currency: currencyStore.defaultCode, recurrence: 'monthly', dayOfMonth: 1, time: '08:00', expenseTypeId: '', description: '', active: true, assignedUserIds: [1] })
+  Object.assign(form, { type: 'expense', name: '', amount: '', currency: currencyStore.defaultCode, recurrence: 'monthly', dayOfMonth: 1, dayOfWeek: 2, month: 1, time: '08:00', categoryId: '', description: '', active: true, assignedUserIds: [usersStore.selfId] })
   showModal.value = true
 }
 function openEdit(item) {
   editingItem.value = item
-  Object.assign(form, { ...item })
+  const cronFields = parseCron(item.periodDefinition) || {}
+  Object.assign(form, {
+    ...item,
+    recurrence: cronFields.recurrence || item.recurrence || 'monthly',
+    dayOfMonth: cronFields.dayOfMonth || item.dayOfMonth || 1,
+    dayOfWeek:  cronFields.dayOfWeek  || item.dayOfWeek  || 2,
+    month:      cronFields.month      || item.month      || 1,
+    time:       cronFields.time       || item.time       || '08:00',
+  })
   showModal.value = true
 }
 function closeModal() { showModal.value = false; editingItem.value = null }
@@ -254,14 +278,16 @@ function saveItem() {
   const data = {
     type: form.type,
     name: form.name,
-    amount: form.type !== 'event' ? Number.parseFloat(form.amount) || null : null,
+    amount: form.type !== 'event' ? parseFloat(form.amount) || null : null,
     currency: form.type !== 'event' ? form.currency : null,
     recurrence: form.recurrence,
-    dayOfMonth: form.dayOfMonth || null,
+    dayOfMonth: form.dayOfMonth || 1,
+    dayOfWeek: form.dayOfWeek || 2,
+    month: form.month || 1,
     time: form.time,
-    expenseTypeId: form.type === 'expense' ? form.expenseTypeId || null : null,
+    categoryId: form.categoryId || null,
     description: form.description,
-    assignedUserIds: form.assignedUserIds || [1],
+    assignedUserIds: form.assignedUserIds.length ? form.assignedUserIds : [usersStore.selfId],
     active: form.active,
     nextRun: form.dayOfMonth ? computeNextRun(form.dayOfMonth) : null,
   }
@@ -348,6 +374,37 @@ function doDelete() { scheduledStore.remove(confirmDeleteId.value); confirmDelet
 .toggle-input:checked + .toggle-track .toggle-thumb { transform: translateX(18px); }
 .sched-users { display: flex; gap: 0.25rem; margin-top: 0.3rem; }
 .user-avatar-xs { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700; color: white; }
-.sched-users { display: flex; gap: 0.25rem; margin-top: 0.3rem; }
-.user-avatar-xs { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700; color: white; }
+.cron-raw { margin-top: 0.2rem; font-family: monospace; opacity: 0.7; }
+.recurrence-tabs { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.recurrence-tab {
+  padding: 0.3rem 0.75rem; border: 1.5px solid var(--color-border);
+  border-radius: 999px; font-size: 0.8rem; font-weight: 500;
+  color: var(--color-text-secondary); cursor: pointer; background: var(--color-surface);
+  transition: all var(--transition);
+}
+.recurrence-tab:hover { border-color: var(--color-border-strong); color: var(--color-text); }
+.recurrence-tab.active { background: var(--color-text); border-color: var(--color-text); color: var(--color-bg); }
+
+.dow-grid { display: flex; gap: 0.375rem; flex-wrap: wrap; }
+.dow-btn {
+  width: 44px; height: 36px;
+  border: 1.5px solid var(--color-border); border-radius: var(--radius-sm);
+  font-size: 0.8rem; font-weight: 500; cursor: pointer;
+  color: var(--color-text-secondary); background: var(--color-surface);
+  transition: all var(--transition);
+}
+.dow-btn:hover { border-color: var(--color-border-strong); color: var(--color-text); }
+.dow-btn.active { background: var(--color-accent); border-color: var(--color-accent); color: white; }
+
+.cron-preview {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  background: var(--color-surface-2); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); padding: 0.75rem 1rem;
+}
+.cron-preview-label { text-transform: uppercase; letter-spacing: 0.06em; }
+.cron-preview-value {
+  font-family: monospace; font-size: 1rem; font-weight: 600;
+  color: var(--color-accent); letter-spacing: 0.05em;
+}
+.cron-preview-desc { }
 </style>

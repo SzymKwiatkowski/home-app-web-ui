@@ -123,7 +123,7 @@ const form = reactive({
   amount: props.entry?.amount || '',
   currency: props.entry?.currency || currencyStore.defaultCode,
   categoryId: props.entry?.categoryId ?? props.entry?.expenseTypeId ?? '',
-  assignedUserIds: props.entry?.assignedUserIds || (props.entry?.assignedUserId ? [props.entry.assignedUserId] : [1]),
+  assignedUserIds: props.entry?.assignedUserIds || (props.entry?.assignedUserId ? [props.entry.assignedUserId] : []),
   description: props.entry?.description || '',
 })
 

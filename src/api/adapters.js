@@ -5,9 +5,10 @@
  * API entryEntityKindId = UI categoryId  (int32, references GetEntryEntityKind.id)
  * API occuredAtOnUtc (ISO datetime)      = UI date (YYYY-MM-DD) + time (HH:mm)
  * API userIds (string[])                 = UI assignedUserIds
- * API GetEntry has no `completed` field  → UI adds it as local-only optimistic state
- *   NOTE: the API has PUT /api/entries/{id}/toggle for completion toggling.
- *         The GET response does NOT return a completed field yet — see gaps note.
+ * CreateEntry now requires isCompleted (bool) — sent on create.
+ * GetEntry does not yet return isCompleted — toggle state is still optimistic.
+ * GetPeriodicEntry now includes entryKind and entryEntityKindId (int16) — fully mapped.
+ * GetCurrency now includes isDefault (bool) — used to sync default currency from server.
  */
 
 import { api } from './client'
@@ -32,7 +33,7 @@ function entryFromApi(e) {
     time: dt.format('HH:mm'),
     description: e.description ?? '',
     assignedUserIds: e.userIds ?? [],
-    completed: false,                           // ← GAP: API toggle exists but GET doesn't return state
+    completed: e.isCompleted ?? false,           // ✓ CreateEntry sends isCompleted; GetEntry gap remains
     completedAt: null,
     createdAt: dt.valueOf(),
   }
@@ -41,11 +42,12 @@ function entryFromApi(e) {
 function entryToApi(e) {
   const dateTime = dayjs(`${e.date} ${e.time}`).toISOString()
   return {
-    entryKind: EVENT_KIND[e.type] ?? 0,
+    entryKind: EVENT_KIND[e.type] ?? 0,                  // ✓ field renamed from eventKind → entryKind
     name: e.name,
     amount: e.amount ?? null,
-    userIds: (e.assignedUserIds ?? []).map(String),   // UUID strings
+    userIds: (e.assignedUserIds ?? []).map(String),
     occuredAtOnUtc: dateTime,
+    isCompleted: e.completed ?? false,                   // ✓ now required by CreateEntry
     description: e.description ?? null,
     entryEntityKindId: e.categoryId ?? null,
   }
@@ -58,18 +60,17 @@ export const entriesApi = {
 }
 
 // ─── Entry Entity Kinds (categories) ─────────────────────────────
-// API schema: { id: UUID, name: string, entryKind: int32 }
-// UI model:   { id: UUID, name: string, entryType: 'expense'|'income'|'event', icon: string, color: string }
-// NOTE: API does NOT store icon or color — those remain UI-only (localStorage).
+// API schema: { id: int32, name: string, entryKind: int32, icon: string, color: string }
+// UI model:   { id: int32, name: string, entryType: 'expense'|'income'|'event', icon: string, color: string }
+// icon and color are now stored server-side; localStorage meta used as fallback only.
 
 function kindFromApi(k) {
   return {
     id: k.id,
     name: k.name,
     entryType: EVENT_KIND_LABEL[k.entryKind] || 'expense',
-    // icon & color are client-side only — stored in localStorage alongside API id
-    icon: k.icon,
-    color: k.color,
+    icon: k.icon || null,    // ✓ now stored and returned by API
+    color: k.color || null,  // ✓ now stored and returned by API
   }
 }
 
@@ -77,8 +78,8 @@ function kindToApi(k) {
   return {
     name: k.name,
     entryKind: EVENT_KIND[k.entryType] ?? 1,
-    icon: k.icon,
-    color: k.color
+    icon: k.icon || '🏷️',   // ✓ now required by CreateEntryEntityKind
+    color: k.color || '#888888',
   }
 }
 
@@ -91,10 +92,11 @@ export const entryKindsApi = {
 // API schema: { id: UUID, name, symbol, code }
 function currencyFromApi(c) {
   return {
-    id: c.id,   // UUID
+    id: c.id,          // int32
     code: c.code,
     symbol: c.symbol,
     name: c.name,
+    isDefault: c.isDefault ?? false,
     position: inferCurrencyPosition(c.code),
   }
 }
@@ -106,14 +108,15 @@ function inferCurrencyPosition(code) {
 }
 
 export const currenciesApi = {
-  getAll: () => api.get('/api/currencies').then(list => list.map(currencyFromApi)),
-  create: (c) => api.post('/api/currencies', { name: c.name, symbol: c.symbol, code: c.code }),
-  delete: (id) => api.delete(`/api/currencies/${id}`, { id }),
+  getAll:       ()   => api.get('/api/currencies').then(list => list.map(currencyFromApi)),
+  create:       (c)  => api.post('/api/currencies', { name: c.name, symbol: c.symbol, code: c.code }),
+  setAsDefault: (id) => api.put(`/api/currencies/${id}`).then(list => list.map(currencyFromApi)),
+  delete:       (id, uuid) => api.delete(`/api/currencies/${id}`, { id: uuid }),
 }
 
 // ─── Periodic Entries (Scheduled) ────────────────────────────────
 // API schema: { id, occuredAtOnUtc, periodDefinition, name, amount, isActive, userIds }
-// NOTE: API has no entryKind, categoryId, or currency on periodic entries — see gaps.
+// NOTE: API has no eventKind, categoryId, or currency on periodic entries — see gaps.
 
 function periodicFromApi(p) {
   const cronFields = parseCron(p.periodDefinition) || {}
@@ -121,20 +124,20 @@ function periodicFromApi(p) {
     id: p.id,
     name: p.name,
     amount: p.amount ?? null,
-    currency: null,           // ← GAP
-    type: EVENT_KIND_LABEL[p.entryKind] || 'expense',          // ← GAP: no entryKind on periodic entries
-    categoryId: p.entryEntityKindId,         // ← GAP: no entryEntityKindId on periodic entries
+    currency: null,                                         // ← GAP: no currency per periodic entry
+    type: EVENT_KIND_LABEL[p.entryKind] || 'expense',      // ✓ now provided by API
+    categoryId: p.entryEntityKindId ?? null,               // int16 — matches entryTypes store int32 ids
     // Decode cron back into UI fields
     recurrence: cronFields.recurrence || 'monthly',
     dayOfMonth: cronFields.dayOfMonth || 1,
     dayOfWeek:  cronFields.dayOfWeek  || 2,
     month:      cronFields.month      || 1,
     time:       cronFields.time       || '08:00',
-    periodDefinition: p.periodDefinition,   // keep raw cron for display
+    periodDefinition: p.periodDefinition,
     nextRun: p.occuredAtOnUtc ? dayjs(p.occuredAtOnUtc).format('YYYY-MM-DD') : null,
     active: p.isActive,
     assignedUserIds: p.userIds ?? [],
-    description: '',          // ← GAP: no description on periodic entries
+    description: '',                                        // ← GAP: no description on periodic entries
   }
 }
 
@@ -152,13 +155,38 @@ function periodicToApi(p) {
     periodDefinition: cron,
     occuredAtOnUtc: p.nextRun ? dayjs(p.nextRun).toISOString() : null,
     isActive: p.active ?? true,
-    userIds: (p.assignedUserIds ?? []).map(String),   // UUID strings
+    entryKind: EVENT_KIND[p.type] ?? 1,                  // ✓ now required by API
+    entryEntityKindId: p.categoryId ?? null,             // int16 in API
+    userIds: (p.assignedUserIds ?? []).map(String),
+  }
+}
+
+function periodicUpdateToApi(p) {
+  // UpdatePeriodicEntry — used by PUT /api/periodicentries/{id}
+  const cron = buildCron({
+    recurrence: p.recurrence,
+    time:       p.time       || '08:00',
+    dayOfMonth: p.dayOfMonth || 1,
+    dayOfWeek:  p.dayOfWeek  || 2,
+    month:      p.month      || 1,
+  })
+  return {
+    name: p.name ?? null,
+    description: p.description ?? null,
+    amount: p.amount ?? null,
+    periodDefinition: cron,
+    isActive: p.active ?? null,
+    entryKind: EVENT_KIND[p.type] ?? 0,
+    entryEntityKindId: p.categoryId ?? null,
+    userIds: (p.assignedUserIds ?? []).map(String),
   }
 }
 
 export const periodicEntriesApi = {
-  getAll: () => api.get('/api/periodicentries').then(list => list.map(periodicFromApi)),
-  create: (p) => api.post('/api/periodicentries', periodicToApi(p)),  // returns UUID
+  getAll:  ()       => api.get('/api/periodicentries').then(list => list.map(periodicFromApi)),
+  create:  (p)      => api.post('/api/periodicentries', periodicToApi(p)),        // returns UUID
+  update:  (id, p)  => api.put(`/api/periodicentries/${id}`, periodicUpdateToApi(p)),
+  toggle:  (id, p)  => api.put(`/api/periodicentries/${id}`, periodicUpdateToApi({ ...p, active: !p.active })),
 }
 
 // ─── Summaries ────────────────────────────────────────────────────

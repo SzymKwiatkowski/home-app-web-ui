@@ -1,16 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { periodicEntriesApi } from '@/api/adapters'
-import dayjs from 'dayjs'
 
-export const RECURRENCE_OPTIONS = [
-  { value: 'daily',     label: 'Every day' },
-  { value: 'weekly',    label: 'Every week' },
-  { value: 'biweekly',  label: 'Every 2 weeks' },
-  { value: 'monthly',   label: 'Every month' },
-  { value: 'quarterly', label: 'Every quarter' },
-  { value: 'yearly',    label: 'Every year' },
-]
+// RECURRENCE_OPTIONS moved to @/api/cron.js
 
 export const useScheduledStore = defineStore('scheduled', () => {
   const items   = ref([])
@@ -33,7 +25,7 @@ export const useScheduledStore = defineStore('scheduled', () => {
     loading.value = true
     error.value = null
     try {
-      const id = await periodicEntriesApi.create(item)   // returns UUID
+      const id = await periodicEntriesApi.create(item)
       items.value.push({ ...item, id })
       return id
     } catch (e) {
@@ -44,20 +36,40 @@ export const useScheduledStore = defineStore('scheduled', () => {
     }
   }
 
-  // Update and toggle are optimistic — API has no PUT for periodic entries yet
-  function update(id, data) {
+  // PUT /api/periodicentries/{id} — full update
+  async function update(id, data) {
     const idx = items.value.findIndex(s => s.id === id)
-    if (idx !== -1) items.value[idx] = { ...items.value[idx], ...data }
+    if (idx === -1) return
+    const merged = { ...items.value[idx], ...data }
+    // Optimistic
+    items.value[idx] = merged
+    try {
+      await periodicEntriesApi.update(id, merged)
+    } catch (e) {
+      error.value = e.message
+      await fetchAll()  // revert by re-fetching
+    }
   }
 
+  // PUT /api/periodicentries/{id} — toggle isActive
+  async function toggle(id) {
+    const idx = items.value.findIndex(s => s.id === id)
+    if (idx === -1) return
+    const item = items.value[idx]
+    // Optimistic
+    items.value[idx] = { ...item, active: !item.active }
+    try {
+      await periodicEntriesApi.toggle(id, item)
+    } catch (e) {
+      error.value = e.message
+      items.value[idx] = item  // revert
+    }
+  }
+
+  // Local remove only (no DELETE endpoint yet)
   function remove(id) {
     items.value = items.value.filter(s => s.id !== id)
   }
 
-  function toggle(id) {
-    const item = items.value.find(s => s.id === id)
-    if (item) item.active = !item.active
-  }
-
-  return { items, loading, error, fetchAll, add, update, remove, toggle }
+  return { items, loading, error, fetchAll, add, update, toggle, remove }
 })
